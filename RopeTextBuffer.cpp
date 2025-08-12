@@ -524,65 +524,68 @@ int *RopeTextBuffer::findAll(char c) const
 {
     return rope.findAll(c);
 }
+void RopeTextBuffer::clear()
+{
+    if (rope.length() > 0)
+    {
+        rope.deleteRange(0, rope.length());
+    }
+    cursorPos = 0;
+    history->clear();
+}
 void RopeTextBuffer::undo()
 {
     if (!history->canUndo())
         return;
+    HistoryManager::Action act = history->popUndo();
 
-    const HistoryManager::Action *action = history->history[history->current];
-
-    if (action->actionName == "insert")
+    if (act.actionName == "insert")
     {
-        rope.deleteRange(action->cursorBefore, action->data.length());
-        cursorPos = action->cursorBefore;
+        rope.deleteRange(act.cursorBefore, act.data.length());
+        cursorPos = act.cursorBefore;
     }
-    else if (action->actionName == "delete")
+    else if (act.actionName == "delete")
     {
-        rope.insert(action->cursorBefore, action->data);
-        cursorPos = action->cursorAfter;
+        rope.insert(act.cursorBefore, act.data);
+        cursorPos = act.cursorAfter;
     }
-    else if (action->actionName == "replace")
+    else if (act.actionName == "replace")
     {
-        // Xóa phần mới, chèn lại phần cũ
-        int insertedLen = action->cursorAfter - action->cursorBefore;
-        rope.deleteRange(action->cursorBefore, insertedLen);
-        rope.insert(action->cursorBefore, action->data);
-        cursorPos = action->cursorAfter;
+        int insertedLen = act.cursorAfter - act.cursorBefore;
+        rope.deleteRange(act.cursorBefore, insertedLen);
+        rope.insert(act.cursorBefore, act.data);
+        cursorPos = act.cursorBefore;
     }
-    else if (action->actionName == "move")
+    else if (act.actionName == "move")
     {
-        cursorPos = action->cursorBefore;
+        cursorPos = act.cursorBefore;
     }
-
-    history->current--;
 }
 void RopeTextBuffer::redo()
 {
     if (!history->canRedo())
         return;
+    HistoryManager::Action act = history->popRedo();
 
-    history->current++;
-    const HistoryManager::Action *action = history->history[history->current];
-
-    if (action->actionName == "insert")
+    if (act.actionName == "insert")
     {
-        rope.insert(action->cursorBefore, action->data);
-        cursorPos = action->cursorAfter;
+        rope.insert(act.cursorBefore, act.data);
+        cursorPos = act.cursorAfter;
     }
-    else if (action->actionName == "delete")
+    else if (act.actionName == "delete")
     {
-        rope.deleteRange(action->cursorBefore, action->data.length());
-        cursorPos = action->cursorBefore;
+        rope.deleteRange(act.cursorBefore, act.data.length());
+        cursorPos = act.cursorBefore;
     }
-    else if (action->actionName == "replace")
+    else if (act.actionName == "replace")
     {
-        rope.deleteRange(action->cursorBefore, action->data.length());
-        rope.insert(action->cursorBefore, rope.substring(action->cursorBefore, action->cursorAfter - action->cursorBefore));
-        cursorPos = action->cursorAfter;
+        rope.deleteRange(act.cursorBefore, act.data.length());
+        rope.insert(act.cursorBefore, rope.substring(act.cursorBefore, act.cursorAfter - act.cursorBefore));
+        cursorPos = act.cursorAfter;
     }
-    else if (action->actionName == "move")
+    else if (act.actionName == "move")
     {
-        cursorPos = action->cursorAfter;
+        cursorPos = act.cursorAfter;
     }
 }
 void RopeTextBuffer::printHistory() const
@@ -595,63 +598,65 @@ void RopeTextBuffer::printHistory() const
 RopeTextBuffer::HistoryManager::HistoryManager()
 {
     // TODO
+    historyCap = 1000;
+    redoCap = 1000;
+    redoSize = 0;
     historySize = 0;
-    current = -1;
-    for (int i = 0; i < historySize; ++i)
-        history[i] = nullptr;
+    history = new Action[historyCap];
+    redoStack = new Action[redoCap];
 }
 
 RopeTextBuffer::HistoryManager::~HistoryManager()
 {
     // TODO
-    for (int i = 0; i < historySize; ++i)
-    {
-        delete history[i];
-    }
+    delete[] history;
+    delete[] redoStack;
 }
 void RopeTextBuffer::HistoryManager::addAction(const Action &a)
 {
-    if ((a.actionName == "insert" || a.actionName == "delete") && current < historySize - 1)
+    if (a.actionName == "delete" || a.actionName == "insert")
     {
-        // Xoá redo stack nếu là insert/delete
-        for (int i = current + 1; i < historySize; ++i)
-        {
-            delete history[i];
-            history[i] = nullptr;
-        }
-        historySize = current + 1;
+        redoSize = 0;
     }
-    history[historySize] = new Action(a);
-    current = historySize;
-    historySize++;
+    history[historySize++] = a;
 }
 bool RopeTextBuffer::HistoryManager::canUndo() const
 {
-    return current >= 0;
+    return historySize > 0;
 }
 bool RopeTextBuffer::HistoryManager::canRedo() const
 {
-    return current < historySize - 1;
+    return redoSize > 0;
 }
 void RopeTextBuffer::HistoryManager::printHistory() const
 {
     cout << "[";
-    for (int i = 0; i < historySize; ++i)
+    for (int i = 0; i < historySize; i++)
     {
-        if (i == current)
-            cout << ">>"; // đánh dấu action hiện tại
-        const Action *act = history[i];
-        if (act != nullptr)
-        {
-            cout << "("
-                 << act->actionName << ", "
-                 << act->cursorBefore << ", "
-                 << act->cursorAfter << ", "
-                 << act->data << ")";
-        }
+        cout << "(" << history[i].actionName << ", "
+             << history[i].cursorBefore << ", "
+             << history[i].cursorAfter << ", "
+             << history[i].data
+             << ")";
         if (i != historySize - 1)
             cout << ", ";
     }
-    cout << "] current=" << current << endl;
+    cout << "]" << endl;
+}
+RopeTextBuffer::HistoryManager::Action RopeTextBuffer::HistoryManager::popUndo()
+{
+    Action act = history[--historySize];
+    redoStack[redoSize++] = act;
+    return act;
+}
+RopeTextBuffer::HistoryManager::Action RopeTextBuffer::HistoryManager::popRedo()
+{
+    Action act = redoStack[--redoSize];
+    history[historySize++] = act;
+    return act;
+}
+void RopeTextBuffer::HistoryManager::clear()
+{
+    historySize = 0;
 }
 // TODO: implement other methods of HistoryManager

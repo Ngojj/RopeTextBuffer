@@ -101,6 +101,7 @@ void test_LMS()
     tb.printHistory();
     cout << tb.getContent() << " cursor : " << tb.getCursorPos() << endl;
 }
+
 int main()
 {
     // testInsertAndToString();
@@ -124,5 +125,6 @@ int main()
     // cout << "sample_06: " << tb.getContent() << ", cursor=" << tb.getCursorPos() << endl;
 
     test_LMS();
+
     return 0;
 }

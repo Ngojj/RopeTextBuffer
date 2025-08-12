@@ -108,6 +108,7 @@ public:
     int *findAll(char c) const;
     void undo();
     void redo();
+    void clear();
     void printHistory() const;
 #ifdef TESTING
     friend class TestHelper;
@@ -128,10 +129,13 @@ public:
             : actionName(actionName), cursorBefore(cursorBefore),
               cursorAfter(cursorAfter), data(data) {}
     };
-
-    Action *history[1000]; // lưu tối đa 1000 hành động
+    static const int maxSize = 1000;
+    Action *history;
+    Action *redoStack;
     int historySize;
-    int current; // vị trí hiện tại (để phân biệt undo/redo)
+    int redoSize;
+    int historyCap;
+    int redoCap;
 
     // TODO: may provide some attributes
 
@@ -142,6 +146,10 @@ public:
     bool canUndo() const;
     bool canRedo() const;
     void printHistory() const;
+    // extra
+    void clear();
+    Action popUndo();
+    Action popRedo();
 #ifdef TESTING
     friend class TestHelper;
 #endif
