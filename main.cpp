@@ -104,27 +104,33 @@ void test_LMS()
 
 int main()
 {
-    // testInsertAndToString();
-    // testCharAt();
-    // testSubstring();
-    // testDeleteRange();
-    // testLengthAndEmpty();
+    testInsertAndToString();
+    testCharAt();
+    testSubstring();
+    testDeleteRange();
+    testLengthAndEmpty();
     // RopeTextBuffer tb;
-    // tb.insert("Hi");
-    // tb.insert("llo");
-    // cout << tb.getContent() << ", cursor=" << tb.getCursorPos() << endl;
-    // tb.moveCursorLeft();
-    // cout << tb.getContent() << ", cursor=" << tb.getCursorPos() << endl;
-    // tb.deleteRange(1);
-    // cout << tb.getContent() << ", cursor=" << tb.getCursorPos() << endl;
+    // tb.insert("HCMUT");
+    // tb.insert("CSEK23");
+    // tb.moveCursorTo(3);
+    // tb.replace(2, "UTE");
+    // cout << tb.getContent() << " cursor: " << tb.getCursorPos() << endl;
     // tb.printHistory();
-    // RopeTextBuffer tb;
-    // tb.insert("Hello");
-    // tb.moveCursorTo(4);
-    // tb.deleteRange(1);
-    // cout << "sample_06: " << tb.getContent() << ", cursor=" << tb.getCursorPos() << endl;
+    // cout << endl;
+
+    // tb.undo();
+    // cout << tb.getContent() << " cursor: " << tb.getCursorPos() << endl;
+    // tb.printHistory();
+    // cout << endl;
+
+    // tb.redo();
+    // cout << tb.getContent() << " cursor: " << tb.getCursorPos() << endl;
+    // tb.printHistory();
+    // cout << endl;
+
+    // tb.undo();
+    // cout << tb.getContent() << " cursor: " << tb.getCursorPos() << endl;
 
     test_LMS();
-
     return 0;
 }

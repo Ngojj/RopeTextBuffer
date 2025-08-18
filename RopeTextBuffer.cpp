@@ -3,14 +3,7 @@
 Rope::Node::Node() : left(nullptr), right(nullptr), data(""), weight(0), height(1), balance(EH) {}
 Rope::Node::Node(const std::string &s)
     : left(nullptr), right(nullptr), data(s), weight(s.length()), height(1), balance(EH) {}
-// Rope::Node::Node(const string &s)
-// {
-//     left = right = nullptr;
-//     data = s;
-//     weight = s.length();
-//     height = 1;
-//     balance = EH;
-// }
+
 bool Rope::Node::isLeaf() const
 {
     return left == nullptr && right == nullptr;
@@ -20,24 +13,24 @@ Rope::Rope()
 {
     // TODO
     root = nullptr;
-    totalLength = 0;
+    // totalLength = 0;
 }
 
 Rope::~Rope()
 {
     // TODO
     destroy(root);
-    totalLength = 0;
+    // totalLength = 0;
 }
 /* public methods*/
 int Rope::length() const
 {
-    // return getTotalLength(root);
-    return this->totalLength;
+    return getTotalLength(root);
+    // return this->totalLength;
 }
 bool Rope::empty() const
 {
-    return this->totalLength == 0;
+    return this->root == nullptr;
 }
 char Rope::charAt(int index) const
 {
@@ -78,6 +71,10 @@ void Rope::collectSubstring(Node *node, int start, int length, int &currentIndex
 }
 string Rope::substring(int start, int length) const
 {
+    if (start < 0 || start > getTotalLength(root))
+        throw ::out_of_range("Index is invalid!");
+    if (length < 0 || start + length > getTotalLength(root))
+        throw ::out_of_range("Length is invalid!");
 
     string result;
     int currentIndex = 0;
@@ -88,7 +85,7 @@ string Rope::substring(int start, int length) const
 }
 void Rope::insert(int index, const string &s)
 {
-    if (index < 0 || index > this->totalLength)
+    if (index < 0 || index > getTotalLength(root))
         throw out_of_range("Index is invalid!");
     if (s.empty())
         return;
@@ -109,12 +106,14 @@ void Rope::insert(int index, const string &s)
     Node *temp = concatNodes(left, middle);
     root = concatNodes(temp, right);
 
-    this->totalLength += s.length();
+    // this->totalLength += s.length();
 }
 void Rope::deleteRange(int start, int length)
 {
-    if (start < 0 || start + length > totalLength)
+    if (start < 0 || start > getTotalLength(root))
         throw ::out_of_range("Index is invalid!");
+    if (length < 0 || start + length > getTotalLength(root))
+        throw ::out_of_range("Length is invalid!");
     Node *left = nullptr;
     Node *right = nullptr;
     split(root, start, left, right);
@@ -126,7 +125,7 @@ void Rope::deleteRange(int start, int length)
     destroy(middle);
 
     root = concatNodes(left, right2);
-    this->totalLength -= length;
+    // this->totalLength -= length;
 }
 string Rope::toString() const
 {
@@ -151,79 +150,116 @@ int Rope::getTotalLength(Node *node) const
 vào*/
 void Rope::update(Node *node)
 {
-    if (node == nullptr)
+    if (!node)
         return;
-    if (node->left != nullptr)
-    {
-        node->weight = getTotalLength(node->left);
-    }
-    else
-        node->weight = 0;
 
+    // Cập nhật weight
+    if (node->left)
+        node->weight = getTotalLength(node->left);
+    else
+        node->weight = (node->isLeaf() ? node->data.length() : 0);
+
+    // Cập nhật height
     int leftHeight = node->left ? node->left->height : 0;
     int rightHeight = node->right ? node->right->height : 0;
-    node->height = 1 + (leftHeight > rightHeight ? leftHeight : rightHeight);
+    node->height = 1 + std::max(leftHeight, rightHeight);
 
-    int balanced = leftHeight - rightHeight;
-    if (balanced == 1)
+    // Cập nhật balance factor
+    int diff = leftHeight - rightHeight;
+    if (diff > 0)
         node->balance = Node::LH;
-    else if (balanced == 0)
-        node->balance = Node::EH;
-    else if (balanced == -1)
+    else if (diff < 0)
         node->balance = Node::RH;
+    else
+        node->balance = Node::EH;
 }
+
 Rope::Node *Rope::rotateLeft(Node *x)
 {
-    Node *rightNode = x->right;
-    Node *T2 = rightNode->left;
+    if (!x || !x->right)
+        return x; // check null an toàn
 
+    Node *y = x->right;
+    Node *T2 = y->left;
+
+    // Thực hiện xoay
     x->right = T2;
-    rightNode->left = x;
+    y->left = x;
 
+    // Nếu có parent pointer thì cập nhật ở đây
+    // if (T2) T2->parent = x;
+    // y->parent = x->parent;
+    // x->parent = y;
+
+    // Cập nhật lại thông tin node
     update(x);
-    update(rightNode);
+    update(y);
 
-    return rightNode;
+    return y;
 }
 
 Rope::Node *Rope::rotateRight(Node *y)
 {
-    Node *leftNode = y->left;
-    Node *T2 = leftNode->right;
+    if (!y || !y->left)
+        return y; // check null an toàn
 
+    Node *x = y->left;
+    Node *T2 = x->right;
+
+    // Thực hiện xoay
     y->left = T2;
-    leftNode->right = y;
+    x->right = y;
 
+    // Nếu có parent pointer thì cập nhật ở đây
+    // if (T2) T2->parent = y;
+    // x->parent = y->parent;
+    // y->parent = x;
+
+    // Cập nhật lại thông tin node
     update(y);
-    update(leftNode);
+    update(x);
 
-    return leftNode;
+    return x;
 }
 Rope::Node *Rope::rebalance(Node *node)
 {
-    if (node == nullptr)
+    if (!node)
         return nullptr;
 
     update(node);
 
-    if (node->balance == Node::LH)
+    int bf = height(node->left) - height(node->right);
+
+    if (bf > 1)
     {
-        if (node->left != nullptr && node->left->balance == Node::RH)
+        if (height(node->left->left) >= height(node->left->right))
         {
+            // LL
+            return rotateRight(node);
+        }
+        else
+        {
+            // LR
             node->left = rotateLeft(node->left);
+            return rotateRight(node);
         }
-        return rotateRight(node);
     }
-    else if (node->balance == Node::RH)
+    else if (bf < -1)
     {
-        if (node->right != nullptr && node->right->balance == Node::LH)
+        if (height(node->right->right) >= height(node->right->left))
         {
-            node->right = rotateRight(node->right);
+            // RR
+            return rotateLeft(node);
         }
-        return rotateLeft(node);
+        else
+        {
+            // RL
+            node->right = rotateRight(node->right);
+            return rotateLeft(node);
+        }
     }
-    else
-        return node;
+
+    return node; // không cần xoay
 }
 void Rope::split(Node *node, int index, Node *&outLeft, Node *&outRight)
 {
@@ -236,70 +272,62 @@ void Rope::split(Node *node, int index, Node *&outLeft, Node *&outRight)
 
     if (node->isLeaf())
     {
-        string leftData = node->data.substr(0, index);
-        string rightData = node->data.substr(index);
+        // Leaf node rìa: trả trực tiếp nếu index ngoài phạm vi
+        if (index <= 0)
+        {
+            outLeft = nullptr;
+            outRight = node;
+            return;
+        }
+        if (index >= (int)node->data.length())
+        {
+            outLeft = node;
+            outRight = nullptr;
+            return;
+        }
 
-        outLeft = leftData.empty() ? nullptr : new Node(leftData);
-        outRight = rightData.empty() ? nullptr : new Node(rightData);
+        // Tách leaf node
+        outLeft = new Node(node->data.substr(0, index));
+        outRight = new Node(node->data.substr(index));
         return;
     }
 
+    // Index nằm trong cây nội bộ
     if (index < node->weight)
     {
-        Node *l1 = nullptr, *l2 = nullptr;
-        split(node->left, index, l1, l2);
+        Node *l, *r;
+        split(node->left, index, l, r);
 
-        Node *newRight = nullptr;
-        if (l2 || node->right)
-        {
-            newRight = new Node();
-            newRight->left = l2;
-            newRight->right = node->right;
-            update(newRight);
-        }
+        outLeft = l;
 
-        outLeft = l1;
-        outRight = newRight;
-    }
-    else if (index > node->weight)
-    {
-        Node *r1 = nullptr, *r2 = nullptr;
-        split(node->right, index - node->weight, r1, r2);
-
-        Node *newLeft = nullptr;
-        if (node->left || r1)
-        {
-            newLeft = new Node();
-            newLeft->left = node->left;
-            newLeft->right = r1;
-            update(newLeft);
-        }
-
-        outLeft = newLeft;
-        outRight = r2;
-    }
-    else // index == weight
-    {
-        outLeft = node->left;
-        outRight = node->right;
-
-        if (outLeft)
-        {
-            Node *newLeft = new Node();
-            newLeft->left = outLeft;
-            newLeft->right = nullptr;
-            update(newLeft);
-            outLeft = newLeft;
-        }
-
-        if (outRight)
+        if (r || node->right)
         {
             Node *newRight = new Node();
-            newRight->left = nullptr;
-            newRight->right = outRight;
+            newRight->left = r;
+            newRight->right = node->right;
             update(newRight);
-            outRight = newRight;
+            outRight = rebalance(newRight);
         }
+        else
+            outRight = nullptr;
+    }
+    else
+    {
+        Node *l, *r;
+        split(node->right, index - node->weight, l, r);
+
+        outRight = r;
+
+        if (node->left || l)
+        {
+            Node *newLeft = new Node();
+            newLeft->left = node->left;
+            newLeft->right = l;
+            update(newLeft);
+            outLeft = rebalance(newLeft);
+        }
+        else
+            outLeft = nullptr;
     }
 }
 
@@ -325,10 +353,12 @@ char Rope::charAt(Node *node, int index) const
 {
     if (node == nullptr)
         throw ::out_of_range("Index is invalid!");
+    
     if (node->isLeaf())
     {
         if (index < 0 || index >= (int)node->data.length())
             throw ::out_of_range("Index is Invalid!");
+        
         return node->data[index];
     }
     if (index < node->weight)
@@ -479,15 +509,17 @@ void RopeTextBuffer::replace(int length, const string &s)
 {
     if (length < 0 || this->cursorPos + length > rope.length())
         throw ::out_of_range("Length is invalid!");
-    string replaced = rope.substring(cursorPos, length);
-    rope.deleteRange(this->cursorPos, length);
-    rope.insert(this->cursorPos, s);
-    history->addAction(RopeTextBuffer::HistoryManager::Action("replace", cursorPos, cursorPos + (int)s.length(), replaced));
-    this->cursorPos += s.length();
+
+    string oldStr = rope.substring(cursorPos, length);
+    int before = cursorPos;
+    rope.deleteRange(cursorPos, length);
+    rope.insert(cursorPos, s);
+    cursorPos += (int)s.size();
+    history->addAction(HistoryManager::Action("replace", before, cursorPos, oldStr, s));
 }
 void RopeTextBuffer::moveCursorTo(int index)
 {
-    if (index < 0 || index >= rope.length())
+    if (index < 0 || index > rope.length())
         throw ::out_of_range("Index is invalid!");
     history->addAction(RopeTextBuffer::HistoryManager::Action("move", cursorPos, index, "J"));
     this->cursorPos = index;
@@ -501,7 +533,7 @@ void RopeTextBuffer::moveCursorLeft()
 }
 void RopeTextBuffer::moveCursorRight()
 {
-    if (this->cursorPos == rope.length() - 1)
+    if (this->cursorPos == rope.length())
         throw ::cursor_error();
     history->addAction(RopeTextBuffer::HistoryManager::Action("move", cursorPos, cursorPos + 1, "R"));
     this->cursorPos++;
@@ -551,8 +583,7 @@ void RopeTextBuffer::undo()
     }
     else if (act.actionName == "replace")
     {
-        int insertedLen = act.cursorAfter - act.cursorBefore;
-        rope.deleteRange(act.cursorBefore, insertedLen);
+        rope.deleteRange(act.cursorBefore, (int)act.newData.size());
         rope.insert(act.cursorBefore, act.data);
         cursorPos = act.cursorBefore;
     }
@@ -579,9 +610,9 @@ void RopeTextBuffer::redo()
     }
     else if (act.actionName == "replace")
     {
-        rope.deleteRange(act.cursorBefore, act.data.length());
-        rope.insert(act.cursorBefore, rope.substring(act.cursorBefore, act.cursorAfter - act.cursorBefore));
-        cursorPos = act.cursorAfter;
+        rope.deleteRange(act.cursorBefore, (int)act.data.size());
+        rope.insert(act.cursorBefore, act.newData);
+        cursorPos = act.cursorBefore + (int)act.newData.size();
     }
     else if (act.actionName == "move")
     {
@@ -612,12 +643,35 @@ RopeTextBuffer::HistoryManager::~HistoryManager()
     delete[] history;
     delete[] redoStack;
 }
+void RopeTextBuffer::HistoryManager::ensureCapacity(Action *&arr, int &cap, int size)
+{
+    if (size < cap)
+        return; // còn chỗ, không cần tăng
+
+    // tăng gấp đôi capacity
+    int newCap = cap * 2;
+    Action *newArr = new Action[newCap];
+
+    // copy dữ liệu cũ sang
+    for (int i = 0; i < size; i++)
+    {
+        newArr[i] = arr[i];
+    }
+
+    // giải phóng mảng cũ
+    delete[] arr;
+    arr = newArr;
+    cap = newCap;
+}
+
 void RopeTextBuffer::HistoryManager::addAction(const Action &a)
 {
     if (a.actionName == "delete" || a.actionName == "insert")
     {
         redoSize = 0;
     }
+
+    ensureCapacity(history, historyCap, historySize);
     history[historySize++] = a;
 }
 bool RopeTextBuffer::HistoryManager::canUndo() const
@@ -641,22 +695,27 @@ void RopeTextBuffer::HistoryManager::printHistory() const
         if (i != historySize - 1)
             cout << ", ";
     }
-    cout << "]" << endl;
+    cout << "]";
 }
 RopeTextBuffer::HistoryManager::Action RopeTextBuffer::HistoryManager::popUndo()
 {
     Action act = history[--historySize];
+
+    ensureCapacity(redoStack, redoCap, redoSize);
     redoStack[redoSize++] = act;
     return act;
 }
 RopeTextBuffer::HistoryManager::Action RopeTextBuffer::HistoryManager::popRedo()
 {
     Action act = redoStack[--redoSize];
+
+    ensureCapacity(history, historyCap, historySize);
     history[historySize++] = act;
     return act;
 }
 void RopeTextBuffer::HistoryManager::clear()
 {
     historySize = 0;
+    redoSize = 0;
 }
 // TODO: implement other methods of HistoryManager

@@ -40,10 +40,12 @@ private:
         Node();
         explicit Node(const string &s);
         bool isLeaf() const;
+
+        // friend class TestHelper;
     };
 
     Node *root;
-    int totalLength; // extra
+    // int totalLength; // extra
     int height(Node *node) const;
     int getTotalLength(Node *node) const;
     void update(Node *node);
@@ -76,6 +78,8 @@ public:
     int countChar(Node *node, char c) const;
     void collectCharIndices(Node *node, char c, int *&result, int &idx, int &pos) const;
     int *findAll(char c) const;
+    // friend class TestHelper; // ex
+    // friend class TestHelper;
 
 #ifdef TESTING
     friend class TestHelper;
@@ -110,6 +114,7 @@ public:
     void redo();
     void clear();
     void printHistory() const;
+    // friend class TestHelper;
 #ifdef TESTING
     friend class TestHelper;
 #endif
@@ -124,18 +129,26 @@ public:
         int cursorBefore;
         int cursorAfter;
         string data;
+        string newData;
 
         Action(const string &actionName = "", int cursorBefore = 0, int cursorAfter = 0, const string &data = "")
             : actionName(actionName), cursorBefore(cursorBefore),
               cursorAfter(cursorAfter), data(data) {}
+        Action(const string &name, int cb, int ca, const string &oldD, const string &newD)
+            : actionName(name), cursorBefore(cb), cursorAfter(ca), data(oldD), newData(newD) {}
     };
-    static const int maxSize = 1000;
+    // static const int maxSize = 1000;
+    // string *newData;
     Action *history;
+    std::string *undoPayloadStack;
     Action *redoStack;
+    std::string *redoPayloadStack;
     int historySize;
     int redoSize;
     int historyCap;
     int redoCap;
+
+    void ensureCapacity(Action *&arr, int &cap, int size);
 
     // TODO: may provide some attributes
 
@@ -150,6 +163,22 @@ public:
     void clear();
     Action popUndo();
     Action popRedo();
+    void pushUndoPayload(const std::string &payload)
+    {
+        undoPayloadStack[historySize - 1] = payload;
+    }
+
+    std::string popUndoPayload()
+    {
+        return undoPayloadStack[historySize]; // hoặc theo index undo hiện tại
+    }
+
+    std::string popRedoPayload()
+    {
+        return redoPayloadStack[redoSize]; // hoặc theo index redo hiện tại
+    }
+    // string popNewData();
+    // friend class TestHelper;
 #ifdef TESTING
     friend class TestHelper;
 #endif
